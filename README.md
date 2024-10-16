@@ -21,9 +21,9 @@
 ## Запуск проекта 
 
 ### Пример файла .env
-- `TODO_PORT = :7540`  # Порт, на котором будет работать сервер
-- `TODO_DBFILE = scheduler.db`  # Путь к файлу базы данных SQLite
-- `TODO_PASSWORD = password`  # Пароль для аутентификации
+- `TODO_PORT = :7540`   Порт, на котором будет работать сервер
+- `TODO_DBFILE = scheduler.db`  Путь к файлу базы данных SQLite
+- `TODO_PASSWORD = password`   Пароль для аутентификации
 
 ### Запуск тестов
 `go test ./tests`
