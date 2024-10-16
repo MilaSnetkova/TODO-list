@@ -11,10 +11,10 @@ import (
 )
 
 type TaskHandler struct {
-	TaskService service.TaskSer
+	TaskService service.TaskService
 }
 
-func NewTaskHandler(taskService service.TaskSer) *TaskHandler {
+func NewTaskHandler(taskService service.TaskService) *TaskHandler {
 	return &TaskHandler{
 		TaskService: taskService,
 	}
@@ -93,7 +93,7 @@ func (h *TaskHandler) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
 func (h *TaskHandler) GetTaskInfoHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 
-	task, err := h.TaskService.GetTaskByID(id)
+	task, err := h.TaskService.GetTasks(id)
 	if err != nil {
 		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
 		return

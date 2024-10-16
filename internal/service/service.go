@@ -11,27 +11,26 @@ import (
 	"github.com/MilaSnetkova/TODO-list/internal/repeat"
 )
 
-type TaskSer interface {
+type TaskService interface {
 	AddTask(task *models.Task) (int64, error)
 	GetTasks(search string) ([]models.Task, error)
-	GetTaskByID(id string) (*models.Task, error)
 	UpdateTask(task *models.Task) error
 	DeleteTask(id string) error
 	TaskDone(id string, now time.Time) error
 }
 
-type TaskService struct {
+type TaskServiceImpl struct {
 	Repo repository.TaskRepository
 }
 
-func NewTaskService(repo repository.TaskRepository) *TaskService {
-	return &TaskService{
+func NewTaskService(repo repository.TaskRepository) *TaskServiceImpl {
+	return &TaskServiceImpl{
 		Repo: repo,
 	}
 }
 
 // Добавление новой задачи
-func (s *TaskService) AddTask(task *models.Task) (int64, error) {
+func (s *TaskServiceImpl) AddTask(task *models.Task) (int64, error) {
 	now := time.Now()
 	var taskDate time.Time
 
@@ -68,7 +67,7 @@ func (s *TaskService) AddTask(task *models.Task) (int64, error) {
 }
 
 // Получение задач с фильтрацией
-func (s *TaskService) GetTasks(search string) ([]models.Task, error) {
+func (s *TaskServiceImpl) GetTasks(search string) ([]models.Task, error) {
 	filter := repository.Filter{
 		Search: search,
 	}
@@ -81,24 +80,9 @@ func (s *TaskService) GetTasks(search string) ([]models.Task, error) {
 	return tasks, nil
 }
 
-// Получение информации о задаче по ID
-func (s *TaskService) GetTaskByID(id string) (*models.Task, error) {
-	if id == "" {
-		return nil, fmt.Errorf("missing task ID")
-	}
-	task, err := s.Repo.GetTaskByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch task: %v", err)
-	}
-	if task == nil {
-		return nil, fmt.Errorf("task not found")
-	}
-
-	return task, nil
-}
 
 // Обновление задачи
-func (s *TaskService) UpdateTask(task *models.Task) error {
+func (s *TaskServiceImpl) UpdateTask(task *models.Task) error {
 	if task.ID == "" || task.Title == "" {
 		return fmt.Errorf("ID or title field is empty")
 	}
@@ -137,7 +121,7 @@ func (s *TaskService) UpdateTask(task *models.Task) error {
 }
 
 // Удаление задачи
-func (s *TaskService) DeleteTask(id string) error {
+func (s *TaskServiceImpl) DeleteTask(id string) error {
 	if id == "" {
 		return fmt.Errorf("missing task ID")
 	}
@@ -151,28 +135,36 @@ func (s *TaskService) DeleteTask(id string) error {
 }
 
 // Выполнение задачи
-func (s *TaskService) TaskDone(id string, now time.Time) error {
-	task, err := s.Repo.GetTaskByID(id)
-	if err != nil {
-		return fmt.Errorf("failed to fetch task: %v", err)
-	}
-	if task == nil {
-		return fmt.Errorf("task not found")
-	}
+func (s *TaskServiceImpl) TaskDone(id string, now time.Time) error {
+    filter := repository.Filter{ID: []string{id}} // Используем фильтр для поиска по ID
+    tasks, err := s.Repo.SearchTasks(filter)
+    if err != nil {
+        return fmt.Errorf("failed to fetch task: %v", err)
+    }
+    if len(tasks) == 0 {
+        return fmt.Errorf("task not found")
+    }
 
-	if task.Repeat == "" {
-		if err := s.Repo.Delete(id); err != nil { 
-			return fmt.Errorf("failed to delete task: %v", err)
-		}
-	} else {
-		nextDate, err := repeat.NextDate(now, task.Date, task.Repeat)
-		if err != nil {
-			return fmt.Errorf("cannot calculate next date: %v", err)
-		}
-		if err := s.Repo.UpdateTaskDate(id, nextDate); err != nil {
-			return fmt.Errorf("failed to update task date: %v", err)
-		}
-	}
+    task := tasks[0] // Получаем первую задачу (если она найдена)
 
-	return nil
-} 
+    // Если задача не имеет повторений, удалить её
+    if task.Repeat == "" {
+        if err := s.Repo.Delete(task.ID); err != nil {
+            return fmt.Errorf("failed to delete task: %v", err)
+        }
+    } else {
+        // Если задача имеет повторения, вычислить следующую дату
+        nextDate, err := repeat.NextDate(now, task.Date, task.Repeat)
+        if err != nil {
+            return fmt.Errorf("cannot calculate next date: %v", err)
+        }
+
+        // Обновляем дату задачи 
+        task.Date = nextDate
+        if err := s.Repo.UpdateTask(&task); err != nil {
+            return fmt.Errorf("failed to update task date: %v", err)
+        }
+    }
+
+    return nil
+}

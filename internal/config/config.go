@@ -2,20 +2,18 @@ package config
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
 
 type Config struct {
-	ServerAddress string        `env:"SERVER_ADDRESS" env-default:"localhost:7540"` 
-	Version       string        `env:"VERSION" env-default:"v1.0"`                
+	ServerAddress string        `env:"TODO_SERVER_ADDRESS" env-default:"localhost:7540"` 
+	Version       string        `env:"TODO_VERSION" env-default:"v1.0"`                
 	DBFile        string        `env:"TODO_DBFILE" env-default:"./scheduler.db"`    
-	TODOPassword  string        `env:"TODO_PASSWORD" env-default:"password"`           
-	JWTSecret     string        `env:"JWT_SECRET" env-default:"your_secret_key"`       
-	Timeout       time.Duration `env:"TIMEOUT" env-default:"5s"`                   
-	Ticker        time.Duration `env:"TICKER" env-default:"1m"`                 
+	Password      string        `env:"TODO_PASSWORD" env-default:"password"`           
+	JWTSecret     string        `env:"TODO_JWT_SECRET" env-default:"your_secret_key"`       
+          
 }
 
 
