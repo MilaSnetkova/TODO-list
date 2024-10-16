@@ -22,7 +22,7 @@ type App struct {
 	db     *sqlx.DB
 }
 
-func NewRouter(version string, serverAddress string, taskService service.TaskService, password string, cfg *config.Config) *chi.Mux {
+func NewRouter(version string, serverAddress string, taskService service.TaskSer) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Статические файлы из директории web
@@ -35,7 +35,7 @@ func NewRouter(version string, serverAddress string, taskService service.TaskSer
 	r.Get("/api/nextdate", handlers.NextDateHandler)
 
 	// Маршрут для аутентификации 
-	r.Post("/api/signin", auth.SignInHandler(cfg))
+	r.Post("/api/signin", auth.SignInHandler)
 
 	r.Group(func(r chi.Router) {
 	r.Use(auth.AuthMiddleware)
@@ -59,9 +59,9 @@ func New() (*App, error) {
 	}
 
 	taskRepo := repository.NewTaskRepo(database)
-	taskService := service.NewTaskService(taskRepo)
+	taskSer := service.NewTaskService(taskRepo)
 
-	router := NewRouter(cfg.Version, cfg.ServerAddress, taskService, cfg.Password, cfg)
+	router := NewRouter(cfg.Version, cfg.ServerAddress, taskSer)
 	if router == nil {
 		return nil, fmt.Errorf("failed to create router")
 	}

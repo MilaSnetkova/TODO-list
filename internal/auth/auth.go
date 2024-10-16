@@ -3,18 +3,15 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-
-	"github.com/MilaSnetkova/TODO-list/internal/config"
 )
-
 // секретный ключ для подписания
 var jwtSecret = []byte("your-secret-key")  
 
-func SignInHandler(cfg *config.Config) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func SignInHandler(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Password string `json:"password"`
 	}
@@ -24,13 +21,16 @@ func SignInHandler(cfg *config.Config) http.HandlerFunc {
 		return
 	}
 
-	currentPassword := cfg.Password
-	if request.Password != currentPassword {
-		// Если пароль неверен, возвращаем ошибку
-		http.Error(w, `{"error": "Wrong password"}`, http.StatusUnauthorized)
+	expectedPassword := os.Getenv("TODO_PASSWORD")
+	if expectedPassword == "" {
+		http.Error(w, `{"error":"No password set"}`, http.StatusUnauthorized)
 		return
 	}
 
+	if request.Password != expectedPassword {
+		http.Error(w, `{"error":"Неверный пароль"}`, http.StatusUnauthorized)
+		return
+	}
 
 	// Создаем токен
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -49,10 +49,16 @@ func SignInHandler(cfg *config.Config) http.HandlerFunc {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"token": tokenString})
 }
-}
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Получаем пароль из переменной окружения
+		currentPassword := os.Getenv("TODO_PASSWORD")
+		if currentPassword == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Получаем токен из куки
 		cookie, err := r.Cookie("token")
 		if err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/MilaSnetkova/TODO-list/internal/config"
 )
 
+var DB *sqlx.DB
 
 func ConnectDB(cfg *config.Config) (*sqlx.DB, error) {
 	dbPath := cfg.DBFile
@@ -27,14 +28,14 @@ func ConnectDB(cfg *config.Config) (*sqlx.DB, error) {
 	install := os.IsNotExist(err)
 
 	// Подключение к базе данных
-	db, err := sqlx.Open("sqlite3", dbPath)
+	DB, err = sqlx.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening database: %w", err)
 	}
 
 	// Если база данных не существует, создаём таблицу и индекс
 	if install {
-		_, err = db.Exec(`
+		_, err = DB.Exec(`
 			CREATE TABLE IF NOT EXISTS scheduler (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				date TEXT NOT NULL,
@@ -50,5 +51,5 @@ func ConnectDB(cfg *config.Config) (*sqlx.DB, error) {
 		fmt.Println("Scheduler table created successfully")
 	}
 
-	return db, nil
+	return DB, nil
 }
