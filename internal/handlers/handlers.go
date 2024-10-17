@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-	"log"
 
-	"github.com/MilaSnetkova/TODO-list/internal/service"
 	"github.com/MilaSnetkova/TODO-list/internal/models"
+	"github.com/MilaSnetkova/TODO-list/internal/service"
+
 )
 
 type TaskHandler struct {
@@ -49,39 +49,36 @@ func (h *TaskHandler) AddTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		http.Error(w, `{"error":"Failed to decode JSON"}`, http.StatusBadRequest)
-		log.Printf("Error decoding JSON: %v", err)
 		return
 	}
 
 	if task.Title == "" {
 		http.Error(w, `{"error":"Empty title field"}`, http.StatusBadRequest)
-		log.Println("Empty title field")
 		return
 	}
 
 	id, err := h.TaskService.AddTask(&task)
 	if err != nil {
 		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
-		log.Printf("Error adding task: %v", err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	json.NewEncoder(w).Encode(map[string]interface{}{"id": id})
-	log.Printf("Task added with ID: %d", id)
 }
 
 // Получение списка задач с фильтром
 func (h *TaskHandler) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
+	id := r.URL.Query().Get("id") // получаем id из параметров запроса
 
-	tasks, err := h.TaskService.GetTasks(search)
+	tasks, err := h.TaskService.GetTasks(search, id) // передаем search и id
 	if err != nil {
 		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
 		return
 	}
 
-	if len(tasks) == 0 {
+	if tasks == nil {
 		tasks = []models.Task{}
 	}
 
@@ -92,15 +89,28 @@ func (h *TaskHandler) GetTasksHandler(w http.ResponseWriter, r *http.Request) {
 // Получение информации о задаче
 func (h *TaskHandler) GetTaskInfoHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, `{"error":"id is required"}`, http.StatusBadRequest)
+		return
+	}
 
-	task, err := h.TaskService.GetTasks(id)
+	tasks, err := h.TaskService.GetTasks("", id)
 	if err != nil {
 		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
 		return
 	}
 
+	if len(tasks) == 0 {
+		http.Error(w, `{"error":"task not found"}`, http.StatusNotFound)
+		return
+	}
+
+	task := tasks[0]
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(task)
+	if err := json.NewEncoder(w).Encode(task); err != nil {
+		http.Error(w, `{"error":"failed to encode task"}`, http.StatusInternalServerError)
+	}
 }
 
 // Обновление задачи

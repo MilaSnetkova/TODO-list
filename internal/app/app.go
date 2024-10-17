@@ -34,14 +34,14 @@ func NewRouter(version string, serverAddress string, taskService service.TaskSer
 	// Маршрут для обработки правил повторения
 	r.Get("/api/nextdate", handlers.NextDateHandler)
 
-	// Маршрут для аутентификации 
+	// Маршрут для аутентификации
 	r.Post("/api/signin", auth.SignInHandler(cfg))
 
 	r.Group(func(r chi.Router) {
-	r.Use(auth.AuthMiddleware)
+		r.Use(auth.AuthMiddleware)
 
-	r.Get("/api/tasks", taskHandler.GetTasksHandler)
-	r.Mount("/api/task", http.HandlerFunc(taskHandler.TaskHandler)) 
+		r.Get("/api/tasks", taskHandler.GetTasksHandler)
+		r.Mount("/api/task", http.HandlerFunc(taskHandler.TaskHandler))
 	})
 
 	return r

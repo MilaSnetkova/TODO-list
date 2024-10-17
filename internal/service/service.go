@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 	"log"
-
+	
 	"github.com/MilaSnetkova/TODO-list/internal/constants"
 	"github.com/MilaSnetkova/TODO-list/internal/models"
 	"github.com/MilaSnetkova/TODO-list/internal/repository"
@@ -13,7 +13,7 @@ import (
 
 type TaskService interface {
 	AddTask(task *models.Task) (int64, error)
-	GetTasks(search string) ([]models.Task, error)
+	GetTasks(search, id string) ([]models.Task, error)
 	UpdateTask(task *models.Task) error
 	DeleteTask(id string) error
 	TaskDone(id string, now time.Time) error
@@ -67,19 +67,19 @@ func (s *TaskServiceImpl) AddTask(task *models.Task) (int64, error) {
 }
 
 // Получение задач с фильтрацией
-func (s *TaskServiceImpl) GetTasks(search string) ([]models.Task, error) {
+func (s *TaskServiceImpl) GetTasks(search, id string) ([]models.Task, error) {
 	filter := repository.Filter{
 		Search: search,
 	}
 
-	tasks, err := s.Repo.SearchTasks(filter)
+	tasks, err := s.Repo.SearchTasks(filter, id) // передаем id в репозиторий
 	if err != nil {
+		
 		return nil, fmt.Errorf("failed to fetch tasks: %v", err)
 	}
 
 	return tasks, nil
 }
-
 
 // Обновление задачи
 func (s *TaskServiceImpl) UpdateTask(task *models.Task) error {
@@ -137,7 +137,7 @@ func (s *TaskServiceImpl) DeleteTask(id string) error {
 // Выполнение задачи
 func (s *TaskServiceImpl) TaskDone(id string, now time.Time) error {
     filter := repository.Filter{ID: []string{id}} // Используем фильтр для поиска по ID
-    tasks, err := s.Repo.SearchTasks(filter)
+    tasks, err := s.Repo.SearchTasks(filter, id)
     if err != nil {
         return fmt.Errorf("failed to fetch task: %v", err)
     }

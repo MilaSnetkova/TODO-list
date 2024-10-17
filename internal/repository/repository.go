@@ -3,7 +3,8 @@ package repository
 import (
 	"database/sql"
 	"time"
- 
+	"fmt"
+	 
 	"github.com/jmoiron/sqlx"
 	"github.com/MilaSnetkova/TODO-list/internal/constants"
 	"github.com/MilaSnetkova/TODO-list/internal/models"
@@ -13,7 +14,7 @@ import (
 // TaskRepository определяет интерфейс для работы с задачами
 type TaskRepository interface {
 	Create(task *models.Task) (int64, error)
-	SearchTasks(filter Filter) ([]models.Task, error)
+	SearchTasks(filter Filter, id string) ([]models.Task, error)
 	UpdateTask(task *models.Task) error
 	Delete(id string) error
 
@@ -52,12 +53,20 @@ func (r *TaskRepo) Create(task *models.Task) (int64, error) {
 }
 
 // Получение списка задач с фильтрацией
-func (r *TaskRepo) SearchTasks(filter Filter) ([]models.Task, error) {
+func (r *TaskRepo) SearchTasks(filter Filter, id string) ([]models.Task, error) {
 	var tasks []models.Task
 
+	// Начальное условие
 	query := "SELECT id, date, title, comment, repeat FROM scheduler WHERE 1=1"
 	var params []interface{}
 
+	// Если передан ID, то ищем по ID
+	if id != "" {
+		query += " AND id = ?"
+		params = append(params, id)
+	}
+
+	// Выполняем фильтрацию по дате или заголовку/комментарию
 	if filter.Search != "" {
 		parsedDate, err := time.Parse("02.01.2006", filter.Search)
 		if err == nil {
@@ -70,9 +79,11 @@ func (r *TaskRepo) SearchTasks(filter Filter) ([]models.Task, error) {
 		}
 	}
 
+	// Добавляем сортировку и лимит
 	query += " ORDER BY date LIMIT ?"
 	params = append(params, constants.Limit)
 
+	
 	rows, err := r.db.Query(query, params...)
 	if err != nil {
 		return nil, err
@@ -81,16 +92,19 @@ func (r *TaskRepo) SearchTasks(filter Filter) ([]models.Task, error) {
 
 	for rows.Next() {
 		var task models.Task
-		err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
-		if err != nil {
+		if err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat); err != nil {
 			return nil, err
 		}
 		tasks = append(tasks, task)
 	}
 
+	// Если ищем по ID, то возвращаем ошибку, если задача не найдена
+	if id != "" && len(tasks) == 0 {
+		return nil, fmt.Errorf("task not found")
+	}
+
 	return tasks, nil
 }
-
 
 // Обновление задачи
 func (r *TaskRepo) UpdateTask(task *models.Task) error {
